@@ -161,7 +161,14 @@ def _run_youtube(job: Job, req: TranscribeRequest) -> None:
     tmp_dir = tempfile.mkdtemp(prefix="yt_audio_")
     try:
         job.events.put({"type": "status", "message": "오디오 다운로드 중…"})
-        dl = download_audio(req.url, tmp_dir)
+        try:
+            dl = download_audio(req.url, tmp_dir)
+        except Exception as exc:  # noqa: BLE001 - 다운로드 실패를 친절히 안내
+            raise RuntimeError(
+                "유튜브에서 오디오를 가져오지 못했습니다. 이 서버는 유튜브 접근이 "
+                "차단되어 있을 수 있어요. 위쪽 '파일 업로드' 탭에서 오디오·영상 "
+                f"파일을 직접 올려 변환해 보세요. (원인: {exc})"
+            ) from exc
         meta = {
             "title": dl.title,
             "video_id": dl.video_id,
