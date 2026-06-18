@@ -25,11 +25,13 @@ jobs:
           HF_USERNAME: ${{ vars.HF_USERNAME }}
           HF_SPACE: ${{ vars.HF_SPACE }}
         run: |
-          if [ -z "$HF_TOKEN" ] || [ -z "$HF_USERNAME" ]; then
-            echo "::error::HF_TOKEN(secret) 와 HF_USERNAME(variable) 을 저장소 설정에 등록하세요."
+          # HF_USERNAME / HF_SPACE 변수가 없으면 기본값 사용
+          HF_USERNAME="${HF_USERNAME:-singapore219}"
+          SPACE="${HF_SPACE:-sound}"
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::error::HF_TOKEN(secret) 을 저장소 Settings → Secrets 에 등록하세요."
             exit 1
           fi
-          SPACE="${HF_SPACE:-sound}"
           echo "→ https://huggingface.co/spaces/${HF_USERNAME}/${SPACE} 로 배포"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"

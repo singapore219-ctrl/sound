@@ -30,9 +30,9 @@ GitHub 저장소(`singapore219-ctrl/sound`)의 **Settings → Secrets and variab
 
 - **Secrets** 탭 → **New repository secret**
   - Name: `HF_TOKEN` / Value: (2단계에서 복사한 토큰)
-- **Variables** 탭 → **New repository variable**
-  - Name: `HF_USERNAME` / Value: (1단계의 본인 HF 계정 이름)
-  - (선택) Name: `HF_SPACE` / Value: `sound`  ← Space 이름을 바꿨을 때만
+
+> `HF_USERNAME` 은 `singapore219` 로 기본 설정되어 있어 따로 등록할 필요가 없습니다.
+> (다른 계정/Space 이름을 쓸 때만 `Variables` 탭에서 `HF_USERNAME` / `HF_SPACE` 를 추가하세요.)
 
 ## 4단계 · 자동 배포 실행
 
