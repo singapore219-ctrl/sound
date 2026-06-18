@@ -1,0 +1,35 @@
+# 집/사무실의 24시간 PC에서 실행하기 위한 구성.
+#
+#   기본 실행(같은 Wi-Fi에서 접속):     docker compose up -d --build
+#   모바일에서 어디서든 접속(공개 URL):  docker compose --profile tunnel up -d --build
+#
+# 자세한 내용은 LOCAL.md 참고.
+
+services:
+  sound:
+    build: .
+    image: sound:latest
+    container_name: sound
+    restart: unless-stopped
+    ports:
+      - "8000:7860"          # 같은 네트워크에서  http://<PC-IP>:8000  으로 접속
+    environment:
+      - SOUND_OUTPUT_DIR=/home/user/app/output/web
+    volumes:
+      - hf-cache:/home/user/.cache/huggingface   # 모델 캐시 보존(재시작해도 재다운로드 안 함)
+
+  # 선택: Cloudflare 무료 "빠른 터널" — 계정 없이 공개 https 주소를 즉시 생성.
+  #   docker compose --profile tunnel up -d
+  #   docker compose logs tunnel   →  https://xxxxx.trycloudflare.com 주소 확인
+  # (컨테이너를 재시작하면 주소가 바뀝니다. 고정 주소는 LOCAL.md의 명명형 터널 참고.)
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: sound-tunnel
+    restart: unless-stopped
+    profiles: ["tunnel"]
+    command: tunnel --no-autoupdate --url http://sound:7860
+    depends_on:
+      - sound
+
+volumes:
+  hf-cache:

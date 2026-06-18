@@ -23,7 +23,7 @@ const fileInfo = $("#file-info");
 
 let currentSource = null;
 let currentJobId = null;
-let mode = "upload";
+let mode = "youtube";
 let selectedFile = null;
 
 // ---- 탭 전환 ----
