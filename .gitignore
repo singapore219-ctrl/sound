@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+
+# 결과물 / 다운로드 오디오
+output/
+*.srt
+*.vtt
+*.m4a
+*.webm
+*.mp3
+*.wav
+
+# 모델 캐시
+.cache/

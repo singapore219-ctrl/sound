@@ -1,0 +1,70 @@
+name: Deploy to Hugging Face Space
+
+# 이 브랜치(또는 main)에 푸시될 때마다 Hugging Face Space 로 코드를 동기화한다.
+# 수동 실행도 가능(Actions 탭 → Run workflow).
+on:
+  push:
+    branches:
+      - claude/youtube-speech-to-text-fhj4dd
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Hugging Face Space 로 업로드
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_USERNAME: ${{ vars.HF_USERNAME || 'singapore219' }}
+          HF_SPACE: ${{ vars.HF_SPACE || 'sound' }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::error::HF_TOKEN(secret) 을 저장소 Settings → Secrets 에 등록하세요."
+            exit 1
+          fi
+          pip install -q "huggingface_hub>=0.23"
+          # git push 대신 HF API 로 업로드한다(자동 재시도 내장, 429 에 강함).
+          # Space 가 없으면 Docker SDK 로 새로 만든다.
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          token = os.environ["HF_TOKEN"]
+          repo_id = f"{os.environ['HF_USERNAME']}/{os.environ['HF_SPACE']}"
+          api = HfApi(token=token)
+
+          print(f"→ Space 준비: https://huggingface.co/spaces/{repo_id}")
+          api.create_repo(
+              repo_id=repo_id,
+              repo_type="space",
+              space_sdk="docker",
+              exist_ok=True,
+          )
+
+          print("→ 파일 업로드 중…")
+          api.upload_folder(
+              repo_id=repo_id,
+              repo_type="space",
+              folder_path=".",
+              commit_message="Deploy from GitHub Actions",
+              ignore_patterns=[
+                  ".git*",
+                  ".github/*",
+                  "tests/*",
+                  "**/__pycache__/*",
+                  "*.pyc",
+                  "output/*",
+                  ".venv/*",
+              ],
+          )
+          print(f"✅ 배포 완료: https://{os.environ['HF_USERNAME']}-{os.environ['HF_SPACE']}.hf.space")
+          PY
