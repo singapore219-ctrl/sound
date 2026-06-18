@@ -33,7 +33,11 @@ from youtube_transcriber.transcribe import transcribe_audio
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(HERE, "static")
-JOBS_DIR = os.path.join(os.getcwd(), "output", "web")
+# 배포 환경(예: Hugging Face Spaces)에서 쓰기 가능한 경로를 지정할 수 있도록
+# SOUND_OUTPUT_DIR 환경변수로 출력 위치를 덮어쓸 수 있게 한다.
+JOBS_DIR = os.environ.get(
+    "SOUND_OUTPUT_DIR", os.path.join(os.getcwd(), "output", "web")
+)
 
 app = FastAPI(title="sound — YouTube 음성→텍스트")
 

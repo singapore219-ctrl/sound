@@ -1,0 +1,38 @@
+name: Deploy to Hugging Face Space
+
+# 이 브랜치(또는 main)에 푸시될 때마다 Hugging Face Space 로 코드를 동기화한다.
+# 수동 실행도 가능(Actions 탭 → Run workflow).
+on:
+  push:
+    branches:
+      - claude/youtube-speech-to-text-fhj4dd
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 저장소 체크아웃
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Hugging Face Space 로 푸시
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_USERNAME: ${{ vars.HF_USERNAME }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+        run: |
+          if [ -z "$HF_TOKEN" ] || [ -z "$HF_USERNAME" ]; then
+            echo "::error::HF_TOKEN(secret) 와 HF_USERNAME(variable) 을 저장소 설정에 등록하세요."
+            exit 1
+          fi
+          SPACE="${HF_SPACE:-sound}"
+          echo "→ https://huggingface.co/spaces/${HF_USERNAME}/${SPACE} 로 배포"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git push --force \
+            "https://${HF_USERNAME}:${HF_TOKEN}@huggingface.co/spaces/${HF_USERNAME}/${SPACE}.git" \
+            HEAD:main

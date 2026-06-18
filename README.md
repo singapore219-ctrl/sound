@@ -1,3 +1,13 @@
+---
+title: sound
+emoji: 🎙️
+colorFrom: purple
+colorTo: blue
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # sound — YouTube 음성 → 텍스트 변환기
 
 YouTube 영상에서 사람이 말하는 모든 내용을 텍스트로 변환합니다.
