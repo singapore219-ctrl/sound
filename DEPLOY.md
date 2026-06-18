@@ -18,6 +18,9 @@
    - 공개/비공개: 아무거나
 3. **Create Space** → 빈 Space가 생깁니다. (아직 비어 있어도 정상)
 
+> 이 단계를 건너뛰어도 됩니다. 배포 워크플로우가 Space 가 없으면
+> Docker SDK 로 자동 생성합니다(이름 기본값 `sound`).
+
 ## 2단계 · HF 액세스 토큰 발급 (1분)
 
 1. https://huggingface.co/settings/tokens 접속

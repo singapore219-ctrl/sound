@@ -15,26 +15,56 @@ jobs:
     steps:
       - name: 저장소 체크아웃
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          lfs: true
 
-      - name: Hugging Face Space 로 푸시
+      - name: Python 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Hugging Face Space 로 업로드
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-          HF_USERNAME: ${{ vars.HF_USERNAME }}
-          HF_SPACE: ${{ vars.HF_SPACE }}
+          HF_USERNAME: ${{ vars.HF_USERNAME || 'singapore219' }}
+          HF_SPACE: ${{ vars.HF_SPACE || 'sound' }}
         run: |
-          # HF_USERNAME / HF_SPACE 변수가 없으면 기본값 사용
-          HF_USERNAME="${HF_USERNAME:-singapore219}"
-          SPACE="${HF_SPACE:-sound}"
           if [ -z "$HF_TOKEN" ]; then
             echo "::error::HF_TOKEN(secret) 을 저장소 Settings → Secrets 에 등록하세요."
             exit 1
           fi
-          echo "→ https://huggingface.co/spaces/${HF_USERNAME}/${SPACE} 로 배포"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git push --force \
-            "https://${HF_USERNAME}:${HF_TOKEN}@huggingface.co/spaces/${HF_USERNAME}/${SPACE}.git" \
-            HEAD:main
+          pip install -q "huggingface_hub>=0.23"
+          # git push 대신 HF API 로 업로드한다(자동 재시도 내장, 429 에 강함).
+          # Space 가 없으면 Docker SDK 로 새로 만든다.
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          token = os.environ["HF_TOKEN"]
+          repo_id = f"{os.environ['HF_USERNAME']}/{os.environ['HF_SPACE']}"
+          api = HfApi(token=token)
+
+          print(f"→ Space 준비: https://huggingface.co/spaces/{repo_id}")
+          api.create_repo(
+              repo_id=repo_id,
+              repo_type="space",
+              space_sdk="docker",
+              exist_ok=True,
+          )
+
+          print("→ 파일 업로드 중…")
+          api.upload_folder(
+              repo_id=repo_id,
+              repo_type="space",
+              folder_path=".",
+              commit_message="Deploy from GitHub Actions",
+              ignore_patterns=[
+                  ".git*",
+                  ".github/*",
+                  "tests/*",
+                  "**/__pycache__/*",
+                  "*.pyc",
+                  "output/*",
+                  ".venv/*",
+              ],
+          )
+          print(f"✅ 배포 완료: https://{os.environ['HF_USERNAME']}-{os.environ['HF_SPACE']}.hf.space")
+          PY
