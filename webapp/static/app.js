@@ -239,11 +239,12 @@ function finish(jobId, ev) {
   );
 
   dlButtons.innerHTML = "";
+  const labelMap = { audio: "오디오 원본" };
   (ev.formats || []).forEach((fmt) => {
     const a = document.createElement("a");
     a.className = "dl-btn";
     a.href = `/api/download/${jobId}/${fmt}`;
-    a.textContent = "↓ " + fmt.toUpperCase();
+    a.textContent = "↓ " + (labelMap[fmt] || fmt.toUpperCase());
     dlButtons.appendChild(a);
   });
   downloadsEl.hidden = false;

@@ -77,9 +77,16 @@ def _cleanup_dir(path: str) -> None:
 
 
 def _transcribe_and_save(
-    job: Job, audio_path: str, meta: dict, req: TranscribeRequest
+    job: Job,
+    audio_path: str,
+    meta: dict,
+    req: TranscribeRequest,
+    audio_source: Optional[str] = None,
 ) -> None:
-    """오디오 한 개를 인식하고 결과를 파일로 저장한다(YouTube/업로드 공통)."""
+    """오디오 한 개를 인식하고 결과를 파일로 저장한다(YouTube/업로드 공통).
+
+    audio_source 가 주어지면 그 오디오 파일도 결과물에 포함해 내려받을 수 있게 한다.
+    """
 
     def emit(event: dict) -> None:
         job.events.put(event)
@@ -144,6 +151,13 @@ def _transcribe_and_save(
             f.write(content)
         job.outputs[fmt] = out_path
 
+    # 원본 오디오도 내려받을 수 있도록 결과 디렉터리에 보관한다.
+    if audio_source and os.path.exists(audio_source):
+        ext = os.path.splitext(audio_source)[1] or ".bin"
+        audio_out = os.path.join(job_out_dir, f"{base}{ext}")
+        shutil.copyfile(audio_source, audio_out)
+        job.outputs["audio"] = audio_out
+
     emit(
         {
             "type": "done",
@@ -176,7 +190,7 @@ def _run_youtube(job: Job, req: TranscribeRequest) -> None:
             "uploader": dl.uploader,
             "duration": dl.duration,
         }
-        _transcribe_and_save(job, dl.audio_path, meta, req)
+        _transcribe_and_save(job, dl.audio_path, meta, req, audio_source=dl.audio_path)
     except Exception as exc:  # noqa: BLE001 - 사용자에게 오류 메시지 전달
         job.events.put({"type": "error", "message": str(exc)})
     finally:
