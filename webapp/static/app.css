@@ -85,10 +85,76 @@ html, body {
   padding: 22px;
 }
 
-.url-row { display: flex; gap: 12px; }
+/* ---- 탭 ---- */
+.tabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+.tab {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tab:hover { color: var(--text); }
+.tab.active {
+  background: rgba(124, 92, 255, 0.22);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px rgba(124, 92, 255, 0.4);
+}
+
+/* ---- 드롭존 ---- */
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 34px 18px;
+  border: 2px dashed var(--card-border);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.18);
+  color: var(--muted);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, color 0.18s;
+}
+.dropzone:hover,
+.dropzone.dragover {
+  border-color: var(--accent);
+  background: rgba(124, 92, 255, 0.1);
+  color: var(--text);
+}
+.dz-title { font-size: 0.92rem; font-weight: 500; }
+.dz-hint { font-size: 0.78rem; opacity: 0.7; }
+.file-info {
+  margin-top: 12px;
+  padding: 11px 14px;
+  border-radius: 11px;
+  background: rgba(0, 212, 255, 0.1);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  font-size: 0.86rem;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .input-wrap {
   position: relative;
-  flex: 1;
+  width: 100%;
   display: flex;
   align-items: center;
 }
@@ -131,6 +197,7 @@ html, body {
 .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 12px 30px -8px rgba(124, 92, 255, 0.9); }
 .btn-primary:active:not(:disabled) { transform: translateY(0); }
 .btn-primary:disabled { opacity: 0.65; cursor: not-allowed; }
+.btn-block { width: 100%; margin-top: 16px; padding: 15px 24px; }
 
 .spinner {
   width: 16px; height: 16px;

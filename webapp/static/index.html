@@ -36,7 +36,12 @@
 
     <section class="card">
       <form id="form" autocomplete="off">
-        <div class="url-row">
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab active" data-mode="youtube">유튜브 링크</button>
+          <button type="button" class="tab" data-mode="upload">파일 업로드</button>
+        </div>
+
+        <div class="panel" data-panel="youtube">
           <div class="input-wrap">
             <svg class="link-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -46,13 +51,22 @@
               id="url"
               type="text"
               placeholder="https://www.youtube.com/watch?v=..."
-              required
             />
           </div>
-          <button id="submit" type="submit" class="btn-primary">
-            <span class="btn-label">받아쓰기 시작</span>
-            <span class="spinner" hidden></span>
-          </button>
+        </div>
+
+        <div class="panel" data-panel="upload" hidden>
+          <label id="dropzone" class="dropzone">
+            <input id="file" type="file" accept="audio/*,video/*" hidden />
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <span class="dz-title">오디오·영상 파일을 끌어다 놓거나 탭하세요</span>
+            <span class="dz-hint">mp3 · m4a · wav · mp4 · webm …</span>
+          </label>
+          <div id="file-info" class="file-info" hidden></div>
         </div>
 
         <details class="options">
@@ -99,6 +113,11 @@
             </fieldset>
           </div>
         </details>
+
+        <button id="submit" type="submit" class="btn-primary btn-block">
+          <span class="btn-label">받아쓰기 시작</span>
+          <span class="spinner" hidden></span>
+        </button>
       </form>
     </section>
 

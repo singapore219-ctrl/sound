@@ -15,8 +15,56 @@ const transcriptEl = $("#transcript");
 const downloadsEl = $("#downloads");
 const dlButtons = $("#dl-buttons");
 
+const tabs = document.querySelectorAll(".tab");
+const panels = document.querySelectorAll(".panel");
+const fileInput = $("#file");
+const dropzone = $("#dropzone");
+const fileInfo = $("#file-info");
+
 let currentSource = null;
 let currentJobId = null;
+let mode = "youtube";
+let selectedFile = null;
+
+// ---- 탭 전환 ----
+tabs.forEach((tab) => {
+  tab.addEventListener("click", () => {
+    mode = tab.dataset.mode;
+    tabs.forEach((t) => t.classList.toggle("active", t === tab));
+    panels.forEach((p) => (p.hidden = p.dataset.panel !== mode));
+  });
+});
+
+// ---- 파일 선택 / 드래그&드롭 ----
+fileInput.addEventListener("change", () => setFile(fileInput.files[0]));
+
+["dragenter", "dragover"].forEach((ev) =>
+  dropzone.addEventListener(ev, (e) => {
+    e.preventDefault();
+    dropzone.classList.add("dragover");
+  })
+);
+["dragleave", "drop"].forEach((ev) =>
+  dropzone.addEventListener(ev, (e) => {
+    e.preventDefault();
+    dropzone.classList.remove("dragover");
+  })
+);
+dropzone.addEventListener("drop", (e) => {
+  const f = e.dataTransfer.files[0];
+  if (f) setFile(f);
+});
+
+function setFile(f) {
+  selectedFile = f || null;
+  if (!f) {
+    fileInfo.hidden = true;
+    return;
+  }
+  const mb = (f.size / (1024 * 1024)).toFixed(1);
+  fileInfo.textContent = `📄 ${f.name} · ${mb} MB`;
+  fileInfo.hidden = false;
+}
 
 function fmtTime(sec) {
   if (sec == null) return "0:00";
@@ -64,13 +112,43 @@ function showError(msg) {
 
 form.addEventListener("submit", (e) => {
   e.preventDefault();
-  const url = urlInput.value.trim();
-  if (!url) return;
 
   const formats = selectedFormats();
   if (formats.length === 0) {
     alert("출력 형식을 하나 이상 선택하세요.");
     return;
+  }
+
+  let request;
+  if (mode === "youtube") {
+    const url = urlInput.value.trim();
+    if (!url) {
+      alert("유튜브 URL 을 입력하세요.");
+      return;
+    }
+    request = fetch("/api/transcribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url,
+        model: $("#model").value,
+        language: $("#language").value || null,
+        device: $("#device").value,
+        formats,
+      }),
+    });
+  } else {
+    if (!selectedFile) {
+      alert("변환할 파일을 선택하세요.");
+      return;
+    }
+    const fd = new FormData();
+    fd.append("file", selectedFile);
+    fd.append("model", $("#model").value);
+    fd.append("language", $("#language").value);
+    fd.append("device", $("#device").value);
+    fd.append("formats", formats.join(","));
+    request = fetch("/api/upload", { method: "POST", body: fd });
   }
 
   reset();
@@ -79,19 +157,7 @@ form.addEventListener("submit", (e) => {
   setStatus("작업을 시작하는 중…", "busy");
   resultEl.scrollIntoView({ behavior: "smooth", block: "start" });
 
-  const payload = {
-    url,
-    model: $("#model").value,
-    language: $("#language").value || null,
-    device: $("#device").value,
-    formats,
-  };
-
-  fetch("/api/transcribe", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  })
+  request
     .then((r) => r.json())
     .then((data) => {
       if (data.error) {

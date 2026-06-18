@@ -91,6 +91,10 @@ python -m youtube_transcriber URL1 URL2 URL3
 브라우저에서 URL 을 붙여넣고 버튼만 누르면 됩니다. 인식되는 자막이
 **실시간으로** 화면에 나타나고, 끝나면 SRT/VTT/JSON/TXT 를 내려받을 수 있습니다.
 
+- **유튜브 링크** 탭: YouTube URL 로 변환
+- **파일 업로드** 탭: 오디오/영상 파일을 직접 올려 변환 (YouTube 접근이 막힌
+  환경에서 유용)
+
 ```bash
 pip install -r requirements-web.txt
 python -m webapp            # http://127.0.0.1:8000

@@ -10,13 +10,14 @@ from __future__ import annotations
 import json
 import os
 import queue
+import shutil
 import tempfile
 import threading
 import uuid
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
-from fastapi import FastAPI
+from fastapi import FastAPI, File, Form, UploadFile
 from fastapi.responses import (
     FileResponse,
     HTMLResponse,
@@ -67,99 +68,133 @@ class TranscribeRequest(BaseModel):
     vad: bool = True
 
 
-def _run_job(job: Job, req: TranscribeRequest) -> None:
-    """백그라운드 스레드에서 실제 변환을 수행한다."""
+def _cleanup_dir(path: str) -> None:
+    """임시 디렉터리를 통째로 정리한다."""
+    try:
+        shutil.rmtree(path, ignore_errors=True)
+    except OSError:
+        pass
+
+
+def _transcribe_and_save(
+    job: Job, audio_path: str, meta: dict, req: TranscribeRequest
+) -> None:
+    """오디오 한 개를 인식하고 결과를 파일로 저장한다(YouTube/업로드 공통)."""
 
     def emit(event: dict) -> None:
         job.events.put(event)
 
-    audio_tmp_dir = tempfile.mkdtemp(prefix="yt_audio_")
-    audio_path: Optional[str] = None
+    emit(
+        {
+            "type": "meta",
+            "title": meta.get("title"),
+            "video_id": meta.get("video_id"),
+            "url": meta.get("url"),
+            "uploader": meta.get("uploader"),
+            "duration": meta.get("duration"),
+        }
+    )
+    emit(
+        {
+            "type": "status",
+            "message": f"음성 인식 중… (모델 {req.model}, "
+            f"언어 {req.language or '자동 감지'})",
+        }
+    )
+
+    def on_segment(seg) -> None:
+        emit(
+            {
+                "type": "segment",
+                "index": seg.index,
+                "start": seg.start,
+                "end": seg.end,
+                "text": seg.text,
+            }
+        )
+
+    result = transcribe_audio(
+        audio_path,
+        model_size=req.model,
+        language=req.language,
+        device=req.device,
+        compute_type=req.compute_type,
+        vad_filter=req.vad,
+        on_progress=on_segment,
+    )
+
+    emit({"type": "status", "message": "결과 파일 저장 중…"})
+    job_out_dir = os.path.join(JOBS_DIR, job.id)
+    os.makedirs(job_out_dir, exist_ok=True)
+    base = _slugify(meta.get("title") or "", meta.get("video_id") or job.id)
+    metadata = {
+        "video_id": meta.get("video_id"),
+        "title": meta.get("title"),
+        "url": meta.get("url"),
+        "uploader": meta.get("uploader"),
+        "model": req.model,
+    }
+    for fmt in req.formats:
+        writer = formats.WRITERS.get(fmt)
+        if writer is None:
+            continue
+        content = writer(result, metadata) if fmt == "json" else writer(result)
+        out_path = os.path.join(job_out_dir, f"{base}.{fmt}")
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(content)
+        job.outputs[fmt] = out_path
+
+    emit(
+        {
+            "type": "done",
+            "language": result.language,
+            "language_probability": round(result.language_probability, 3),
+            "num_segments": len(result.segments),
+            "text": result.text,
+            "formats": list(job.outputs.keys()),
+        }
+    )
+
+
+def _run_youtube(job: Job, req: TranscribeRequest) -> None:
+    """YouTube URL 에서 오디오를 받아 변환한다."""
+    tmp_dir = tempfile.mkdtemp(prefix="yt_audio_")
     try:
-        emit({"type": "status", "message": "오디오 다운로드 중…"})
-        dl = download_audio(req.url, audio_tmp_dir)
-        audio_path = dl.audio_path
-        emit(
-            {
-                "type": "meta",
-                "title": dl.title,
-                "video_id": dl.video_id,
-                "url": dl.webpage_url,
-                "uploader": dl.uploader,
-                "duration": dl.duration,
-            }
-        )
-
-        emit(
-            {
-                "type": "status",
-                "message": f"음성 인식 중… (모델 {req.model}, "
-                f"언어 {req.language or '자동 감지'})",
-            }
-        )
-
-        def on_segment(seg) -> None:
-            emit(
-                {
-                    "type": "segment",
-                    "index": seg.index,
-                    "start": seg.start,
-                    "end": seg.end,
-                    "text": seg.text,
-                }
-            )
-
-        result = transcribe_audio(
-            audio_path,
-            model_size=req.model,
-            language=req.language,
-            device=req.device,
-            compute_type=req.compute_type,
-            vad_filter=req.vad,
-            on_progress=on_segment,
-        )
-
-        emit({"type": "status", "message": "결과 파일 저장 중…"})
-        job_out_dir = os.path.join(JOBS_DIR, job.id)
-        os.makedirs(job_out_dir, exist_ok=True)
-        base = _slugify(dl.title, dl.video_id)
-        metadata = {
-            "video_id": dl.video_id,
+        job.events.put({"type": "status", "message": "오디오 다운로드 중…"})
+        dl = download_audio(req.url, tmp_dir)
+        meta = {
             "title": dl.title,
+            "video_id": dl.video_id,
             "url": dl.webpage_url,
             "uploader": dl.uploader,
-            "model": req.model,
+            "duration": dl.duration,
         }
-        for fmt in req.formats:
-            writer = formats.WRITERS.get(fmt)
-            if writer is None:
-                continue
-            content = writer(result, metadata) if fmt == "json" else writer(result)
-            out_path = os.path.join(job_out_dir, f"{base}.{fmt}")
-            with open(out_path, "w", encoding="utf-8") as f:
-                f.write(content)
-            job.outputs[fmt] = out_path
-
-        emit(
-            {
-                "type": "done",
-                "language": result.language,
-                "language_probability": round(result.language_probability, 3),
-                "num_segments": len(result.segments),
-                "text": result.text,
-                "formats": list(job.outputs.keys()),
-            }
-        )
+        _transcribe_and_save(job, dl.audio_path, meta, req)
     except Exception as exc:  # noqa: BLE001 - 사용자에게 오류 메시지 전달
-        emit({"type": "error", "message": str(exc)})
+        job.events.put({"type": "error", "message": str(exc)})
     finally:
-        # 임시 오디오 정리
-        try:
-            if audio_path and os.path.exists(audio_path):
-                os.remove(audio_path)
-            os.rmdir(audio_tmp_dir)
-        except OSError:
-            pass
+        _cleanup_dir(tmp_dir)
+        job.done = True
+        job.events.put(SENTINEL)
+
+
+def _run_upload(
+    job: Job, audio_path: str, tmp_dir: str, filename: str, req: TranscribeRequest
+) -> None:
+    """업로드된 오디오/영상 파일을 변환한다."""
+    try:
+        meta = {
+            "title": filename,
+            "video_id": job.id,
+            "url": None,
+            "uploader": "업로드 파일",
+            "duration": None,
+        }
+        _transcribe_and_save(job, audio_path, meta, req)
+    except Exception as exc:  # noqa: BLE001
+        job.events.put({"type": "error", "message": str(exc)})
+    finally:
+        _cleanup_dir(tmp_dir)
         job.done = True
         job.events.put(SENTINEL)
 
@@ -169,11 +204,47 @@ def _run_job(job: Job, req: TranscribeRequest) -> None:
 # --------------------------------------------------------------------------- #
 @app.post("/api/transcribe")
 def start_transcribe(req: TranscribeRequest) -> JSONResponse:
+    """YouTube URL 로 변환 작업을 시작한다."""
     if not req.url.strip():
         return JSONResponse({"error": "URL 을 입력하세요."}, status_code=400)
     job = Job(id=uuid.uuid4().hex[:12])
     JOBS[job.id] = job
-    threading.Thread(target=_run_job, args=(job, req), daemon=True).start()
+    threading.Thread(target=_run_youtube, args=(job, req), daemon=True).start()
+    return JSONResponse({"job_id": job.id})
+
+
+@app.post("/api/upload")
+async def start_upload(
+    file: UploadFile = File(...),
+    model: str = Form("base"),
+    language: str = Form(""),
+    device: str = Form("auto"),
+    vad: bool = Form(True),
+    # 일부 FastAPI/Starlette 조합에서 List 형 Form 필드가 멀티파트 파싱을
+    # 깨뜨리므로, 형식 목록은 콤마로 구분된 문자열로 받는다.
+    formats: str = Form("srt,vtt,json,txt"),
+) -> JSONResponse:
+    """업로드된 오디오/영상 파일로 변환 작업을 시작한다."""
+    tmp_dir = tempfile.mkdtemp(prefix="up_audio_")
+    safe_name = os.path.basename(file.filename or "audio")
+    audio_path = os.path.join(tmp_dir, safe_name)
+    with open(audio_path, "wb") as out:
+        shutil.copyfileobj(file.file, out)
+
+    fmt_list = [f.strip() for f in formats.split(",") if f.strip()]
+    job = Job(id=uuid.uuid4().hex[:12])
+    JOBS[job.id] = job
+    req = TranscribeRequest(
+        url="",
+        model=model,
+        language=language or None,
+        device=device,
+        vad=vad,
+        formats=fmt_list or ["srt", "vtt", "json", "txt"],
+    )
+    threading.Thread(
+        target=_run_upload, args=(job, audio_path, tmp_dir, safe_name, req), daemon=True
+    ).start()
     return JSONResponse({"job_id": job.id})
 
 
