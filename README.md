@@ -76,15 +76,34 @@ python -m youtube_transcriber URL1 URL2 URL3
 }
 ```
 
+## 웹 UI
+
+브라우저에서 URL 을 붙여넣고 버튼만 누르면 됩니다. 인식되는 자막이
+**실시간으로** 화면에 나타나고, 끝나면 SRT/VTT/JSON/TXT 를 내려받을 수 있습니다.
+
+```bash
+pip install -r requirements-web.txt
+python -m webapp            # http://127.0.0.1:8000
+
+# 외부 접속을 허용하려면
+HOST=0.0.0.0 PORT=8000 python -m webapp
+```
+
+- 실시간 진행 상황은 SSE(Server-Sent Events) 로 전송됩니다.
+- 모델/언어/장치/출력 형식을 화면의 "고급 옵션"에서 바로 고를 수 있습니다.
+
 ## 프로젝트 구조
 
 ```
-youtube_transcriber/
+youtube_transcriber/    # 핵심 라이브러리 + CLI
 ├── download.py    # yt-dlp 오디오 다운로드
 ├── transcribe.py  # faster-whisper STT 래퍼
 ├── formats.py     # SRT/VTT/JSON/TXT 직렬화
 ├── pipeline.py    # 다운로드+STT+저장 파이프라인
 └── cli.py         # 명령줄 인터페이스
+webapp/                 # 웹 UI (FastAPI + SSE)
+├── server.py      # API 서버 (작업 큐 + 실시간 스트림)
+└── static/        # index.html · app.css · app.js
 tests/
 └── test_formats.py  # 형식 변환 단위 테스트
 ```
