@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "youtube-transcriber"
+version = "0.1.0"
+description = "YouTube 영상의 음성을 텍스트(자막/JSON)로 변환하는 도구"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "yt-dlp>=2024.1.0",
+    "faster-whisper>=1.0.0",
+]
+
+[project.scripts]
+youtube-transcriber = "youtube_transcriber.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["youtube_transcriber*"]
