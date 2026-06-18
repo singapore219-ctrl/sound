@@ -31,17 +31,31 @@
         <span>sound</span>
       </div>
       <h1>유튜브 영상을 <span class="grad">텍스트</span>로</h1>
-      <p class="subtitle">영상 속 모든 말을 받아써 드립니다. 로컬 Whisper · 자동 언어 감지 · 자막/JSON 출력</p>
+      <p class="subtitle">오디오·영상 파일을 올리면 모든 말을 받아써 드립니다. 자동 언어 감지 · 자막/JSON 출력</p>
     </header>
 
     <section class="card">
       <form id="form" autocomplete="off">
         <div class="tabs" role="tablist">
-          <button type="button" class="tab active" data-mode="youtube">유튜브 링크</button>
-          <button type="button" class="tab" data-mode="upload">파일 업로드</button>
+          <button type="button" class="tab active" data-mode="upload">파일 업로드</button>
+          <button type="button" class="tab" data-mode="youtube">유튜브 링크</button>
         </div>
 
-        <div class="panel" data-panel="youtube">
+        <div class="panel" data-panel="upload">
+          <label id="dropzone" class="dropzone">
+            <input id="file" type="file" accept="audio/*,video/*" hidden />
+            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <span class="dz-title">탭해서 오디오·영상 파일을 선택하세요</span>
+            <span class="dz-hint">휴대폰의 녹음·동영상 파일 가능 · mp3 · m4a · wav · mp4 · webm …</span>
+          </label>
+          <div id="file-info" class="file-info" hidden></div>
+        </div>
+
+        <div class="panel" data-panel="youtube" hidden>
           <div class="input-wrap">
             <svg class="link-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
@@ -53,20 +67,7 @@
               placeholder="https://www.youtube.com/watch?v=..."
             />
           </div>
-        </div>
-
-        <div class="panel" data-panel="upload" hidden>
-          <label id="dropzone" class="dropzone">
-            <input id="file" type="file" accept="audio/*,video/*" hidden />
-            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="17 8 12 3 7 8" />
-              <line x1="12" y1="3" x2="12" y2="15" />
-            </svg>
-            <span class="dz-title">오디오·영상 파일을 끌어다 놓거나 탭하세요</span>
-            <span class="dz-hint">mp3 · m4a · wav · mp4 · webm …</span>
-          </label>
-          <div id="file-info" class="file-info" hidden></div>
+          <p class="panel-note">⚠ 이 서버에서는 유튜브 접근이 막혀 실패할 수 있어요. 안 되면 위 “파일 업로드”를 사용하세요.</p>
         </div>
 
         <details class="options">
